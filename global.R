@@ -18,16 +18,10 @@ includeScript('css/tooltip.css')
 # #login to synapse
 synapseLogin()
 
-#########
-#Read the hg19 genes annotaiton
-##########
-cat('reading the hg19 gene annotation from : org.Hs.eg.db')
-k <- keys(org.Hs.eg.db,keytype="SYMBOL")
-hg19_gene_annot <- select(org.Hs.eg.db, keys=k, columns=c("GENENAME","ALIAS"), keytype="SYMBOL")
-hg19_gene_annot <- ddply(hg19_gene_annot,.variables=c('SYMBOL','GENENAME'), .fun = function(x) paste(x$ALIAS,collapse=', ') )
-hg19_gene_annot['ALIAS'] <- hg19_gene_annot$V1
-hg19_gene_annot$V1 <- NULL
-cat('...Done\n\n')
+
+## WORKAROUND : mainly to avoid creating on the fly as org.Hs.eg.db on shiny server is old
+#precomputed in precompute.R
+hg19_gene_annot <- readRDS("hg19_gene_annot.RDS")
 
 
 ###
