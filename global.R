@@ -21,7 +21,7 @@ synapseLogin()
 
 ## WORKAROUND : mainly to avoid creating on the fly as org.Hs.eg.db on shiny server is old
 #precomputed in precompute.R
-hg19_gene_annot <- readRDS("hg19_gene_annot.RDS")
+hg19_gene_annot <- readRDS("precomputed_hg19_gene_annot.RDS")
 
 
 ###
