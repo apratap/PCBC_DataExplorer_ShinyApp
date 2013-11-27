@@ -1,4 +1,3 @@
-
 #Define the server the logic
 shinyServer(function(input,output,session){
   
@@ -75,7 +74,7 @@ shinyServer(function(input,output,session){
     }
   })
   
-  
+
   #########
   #get list of pathways enriched in the geneList selected by the user
   #########
@@ -144,12 +143,21 @@ shinyServer(function(input,output,session){
    #return the heatMap plot
    output$heatMap <- renderPlot({  
      # get the filtered geneExp counts 
-     m <- as.matrix(selected_geneNormCounts())
+     m <- selected_geneNormCounts()
+     
+     #add the row names
+     #PURE HACK : since many ensembly IDs have same gene names 
+     # and rownames(matrix) cant have duplicates
+     # forcing the heatmap to render explicity passed rownames
+     #rownames(m) <- m$gene_id
+     explicit_rownames <- as.vector(m$symbol)
+     #convert to matrix
+     m <- as.matrix(m)
      # eliminate the first 3 cols to get rid of the annotation and convert to matrix
      m <- m[,4:ncol(m)]
      annotation <- get_filtered_genesAnnotation()
      #plot the heatmap
-     get_geneExpression_heatMap(m,annotation)  #available in geneExpression_heatMap.R
+     get_geneExpression_heatMap(m,annotation,explicit_rownames = explicit_rownames)  #available in geneExpression_heatMap.R
    })
   
   

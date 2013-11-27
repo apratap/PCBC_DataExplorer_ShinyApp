@@ -9,7 +9,7 @@ shinyUI(pageWithSidebar(
   #SIDE BAR PANEL FOR USER OPTIONS
   ##################################
   sidebarPanel(
-    h4('1. Select a significiant gene list'),
+    h4('1. Select a gene list'),
     tabsetPanel(
       id = 'genelist_type',
       #TAB PANEL 1 : precomputed sig gene list
@@ -36,11 +36,11 @@ shinyUI(pageWithSidebar(
       #TAB PANEL 3 : custom gene list
       tabPanel('My gene list',h5('Search on a custom gene list:'),
                               tags$textarea(id="custom_gene_list",rows=5,cols=100,sample_gene_list),
-                              helpText("Genes may be separated by comma, tab, space"),
+                              helpText("Accepts HUGO gene names. Gene names may be separated by comma, space,line, comma "),
                               br(),
                 value='custom_gene_list'
-              )
-    ), #END TAB PANEL 3
+              ) #END TAB PANEL 3
+    ),#END TABSET 
     
     br(),
     #heatmap annotation labels
