@@ -241,7 +241,8 @@ vplayout = function(x, y){
 heatmap_motor = function(matrix, border_color, cellwidth, cellheight, tree_col, tree_row, 
                          treeheight_col, treeheight_row, filename, width, height, breaks, color, legend, 
                          annotation, annotation_colors, annotation_legend, main, fontsize, fontsize_row, 
-                         fontsize_col, fmat, fontsize_number, useRaster, drawRowD,...){
+                         fontsize_col, fmat, fontsize_number, useRaster, drawRowD,
+                         explicit_rownames,...){
   grid.newpage()
   
   # Set layout
@@ -285,7 +286,8 @@ heatmap_motor = function(matrix, border_color, cellwidth, cellheight, tree_col, 
                   color = color, legend = legend, annotation = annotation, annotation_colors = annotation_colors, 
                   annotation_legend = annotation_legend, filename = NA, main = main, fontsize = fontsize, 
                   fontsize_row = fontsize_row, fontsize_col = fontsize_col, fmat = fmat, 
-                  fontsize_number =  fontsize_number, useRaster = useRaster, drawRowD = drawRowD,...)
+                  fontsize_number =  fontsize_number, useRaster = useRaster, drawRowD = drawRowD,
+                  explicit_rownames,...)
     dev.off()
     upViewport()
     return()
@@ -309,7 +311,7 @@ heatmap_motor = function(matrix, border_color, cellwidth, cellheight, tree_col, 
   }
   
   # Draw tree for the rows
-  if( drawRowD == TRUE | nrow(matrix) <= 50 ){
+  if( drawRowD == TRUE | nrow(matrix) <= 200 ){
     if(!is.na(tree_row[[1]][1]) & treeheight_row != 0 ){
       pushViewport(vplayout(4, 1))
       draw_dendrogram(tree_row, horizontal = F)
@@ -332,14 +334,16 @@ heatmap_motor = function(matrix, border_color, cellwidth, cellheight, tree_col, 
       upViewport()
     }  
   }
-  
-  # Draw rownames
-  if(length(rownames(matrix)) != 0){
-    pushViewport(vplayout(4, 3))
-    pars = list(rownames(matrix), fontsize = fontsize_row, ...)
-    do.call(draw_rownames, pars)
-    upViewport()
-  }
+      
+  # Draw rownames ONLY IF number of rows are < 70
+  if(nrow(matrix) <= 70){
+    if(length(explicit_rownames) == nrow(matrix)){
+      pushViewport(vplayout(4, 3))
+      pars = list(explicit_rownames, fontsize = fontsize_row, ...)
+      do.call(draw_rownames, pars)
+      upViewport()
+    }
+  }  
   
   # Draw annotation tracks
   if(!is.na(annotation[[1]][1])){
@@ -351,7 +355,7 @@ heatmap_motor = function(matrix, border_color, cellwidth, cellheight, tree_col, 
   
   # Draw annotation legend
   if(!is.na(annotation[[1]][1]) & annotation_legend){
-    if(length(rownames(matrix)) != 0){
+    if(length(explicit_rownames) == nrow(matrix) & length(explicit_rownames) <= 70 ) {
       pushViewport(vplayout(4:5, 5))
     }
     else{
@@ -361,19 +365,19 @@ heatmap_motor = function(matrix, border_color, cellwidth, cellheight, tree_col, 
     upViewport()
   }
   
-  # Draw legend
+  # Draw legend IF not drawing the ROW names
   if(!is.na(legend[1])){
     length(colnames(matrix))
-    if(length(rownames(matrix)) != 0){
-      pushViewport(vplayout(4:5, 4))
+    if(length(explicit_rownames) == nrow(matrix) & length(explicit_rownames) <= 50 ){
+     # pushViewport(vplayout(4:5, 4))
+     # DO NOTHING
     }
     else{
       pushViewport(vplayout(3:5, 4))
+      draw_legend(color, breaks, legend, fontsize = fontsize, ...)
+      upViewport()
     }
-    draw_legend(color, breaks, legend, fontsize = fontsize, ...)
-    upViewport()
   }
-  
   
 }
 
@@ -650,7 +654,7 @@ memoised_pheatmap = function(mat, color = colorRampPalette(rev(brewer.pal(n = 7,
                     drop_levels = TRUE, show_rownames = T, show_colnames = T, main = NA, fontsize = 10, 
                     fontsize_row = fontsize, fontsize_col = fontsize, display_numbers = F, number_format = "%.2f", 
                     fontsize_number = 0.8 * fontsize, filename = NA, width = NA, height = NA, 
-                    useRaster=FALSE, drawRowD=TRUE, ...){
+                    useRaster=FALSE, drawRowD=TRUE, explicit_rownames = 'none', ...){
   
   # Preprocess matrix
   mat = as.matrix(mat)
@@ -667,7 +671,6 @@ memoised_pheatmap = function(mat, color = colorRampPalette(rev(brewer.pal(n = 7,
     # Cluster data
     km = kmeans(mat, kmeans_k, iter.max = 100)
     mat = km$centers
-    
     # Compose rownames
     t = table(km$cluster)
     rownames(mat) = sprintf("cl%s_size_%d", names(t), t)
@@ -736,8 +739,7 @@ memoised_pheatmap = function(mat, color = colorRampPalette(rev(brewer.pal(n = 7,
     legend = NA
   }
   mat = scale_colours(mat, col = color, breaks = breaks)
-  
-  
+
   # Preparing annotation colors
   if(!is.na(annotation[[1]][1])){
     annotation = annotation[colnames(mat), , drop = F]
@@ -747,7 +749,6 @@ memoised_pheatmap = function(mat, color = colorRampPalette(rev(brewer.pal(n = 7,
   if(!show_rownames){
     rownames(mat) = NULL
   }
-  
   if(!show_colnames){
     colnames(mat) = NULL
   }
@@ -759,7 +760,8 @@ memoised_pheatmap = function(mat, color = colorRampPalette(rev(brewer.pal(n = 7,
                 color = color, legend = legend, annotation = annotation, annotation_colors = annotation_colors, 
                 annotation_legend = annotation_legend, main = main, fontsize = fontsize, 
                 fontsize_row = fontsize_row, fontsize_col = fontsize_col, fmat = fmat, 
-                fontsize_number = fontsize_number, useRaster=useRaster, drawRowD=drawRowD,...)
+                fontsize_number = fontsize_number, useRaster=useRaster, drawRowD=drawRowD,
+                explicit_rownames = explicit_rownames, ...)
   
   invisible(list(tree_row = tree_row, tree_col = tree_col, kmeans = km))
   #return(mat)
