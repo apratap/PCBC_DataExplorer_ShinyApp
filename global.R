@@ -15,7 +15,7 @@ source("geneExpression_heatMap.R")
 #   install.packages("devtools")
 # if(!require("heatmap"))
 #   devtools::install_github("d3-heatmap", "jcheng5")
-library("heatmap")
+#library("heatmap")
 
 
 #load the external files
