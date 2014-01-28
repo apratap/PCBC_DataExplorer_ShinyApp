@@ -7,7 +7,6 @@ shinyServer(function(input,output,session){
   #Default Error state
   output$error <- renderText({error$state})
   
-  
   #select the list of samples to show
   #Based on USER Selected filter options
   #directly obtained from filtered meta data
@@ -48,16 +47,20 @@ shinyServer(function(input,output,session){
     }
     else if( input$genelist_type == 'precomputed_significant_geneList'){
       if(input$enrichedPathways == 'ALL'){
+        genes_in_selected_GeneList <- sigGenes_lists[[input$selected_Significant_GeneList]]
+        genes <- unique(genes_in_selected_GeneList)
         #get union of all the genes in the enriched pathways for this geneList
-        enriched_pathways <- gsub('#p.adj_.*','', get_enrichedPathways())
-        genes <- lapply(enriched_pathways,function(x) {MSigDB$C2.CP.KEGG[[x]]})
-        genes <- Reduce(union,genes)
+        #enriched_pathways <- gsub('#p.adj_.*','', get_enrichedPathways())
+        #genes <- lapply(enriched_pathways,function(x) {MSigDB$C2.CP.KEGG[[x]]})
+        #genes <- Reduce(union,genes)
       }
       else{
         #1. get a list of all genes in the selected enriched pathway
         #trimming the suffix : #pdj-
         pathway = gsub('#p.adj_.*','',input$enrichedPathways)
-        genes <- MSigDB$C2.CP.KEGG[[pathway]]
+        genes_in_pathway <- MSigDB$C2.CP.KEGG[[pathway]]
+        genes_in_selected_GeneList <- sigGenes_lists[[input$selected_Significant_GeneList]]
+        genes <- intersect(genes_in_pathway, genes_in_selected_GeneList)
       }
     }
     else if( input$genelist_type == 'pathway'){
@@ -84,7 +87,6 @@ shinyServer(function(input,output,session){
       precomputed_enrichedPathways_in_geneLists[[input$selected_Significant_GeneList]]
   })
   
-  
   #update the enriched pathways for the user selected genelist
   observe({
     enriched_Pathways = sort(get_enrichedPathways())
@@ -96,13 +98,14 @@ shinyServer(function(input,output,session){
     ) 
   })
   
-  
+
   ###
   #subset the gene norm counts to select only the genes found 
   ###
   selected_geneNormCounts <- reactive({
     #a.) subset based on genes found in a pathway or user defined list
     filtered_geneNormCounts <- subset(geneNormCounts, symbol %in% selected_genes())
+    #print(dim(filtered_geneNormCounts))
     #b.) subset on sample names based on user selected filters + rebind the gene names (first 3 cols)
     filtered_geneNormCounts <- cbind( filtered_geneNormCounts[,1:3],
                                       filtered_geneNormCounts[, names(filtered_geneNormCounts) %in% filtered_sample_names()  ])
@@ -144,7 +147,6 @@ shinyServer(function(input,output,session){
    output$heatMap <- renderPlot({  
      # get the filtered geneExp counts 
      m <- selected_geneNormCounts()
-     
      #add the row names
      #PURE HACK : since many ensembly IDs have same gene names 
      # and rownames(matrix) cant have duplicates
@@ -162,8 +164,9 @@ shinyServer(function(input,output,session){
   
   
   #create summary table
-  output$summary <- renderTable({     
-     summary <- data.frame('Category' =  c('#genes_currentPathway', '#genes_found_in_dataset', 
+  output$summary <- renderTable({
+     
+     summary <- data.frame('Category' =  c('#Uniq genes in current list/pathway', '#genes found with exp values', 
                                            '#samples'),
                            'Value'    =  c( length(selected_genes()), nrow(selected_geneNormCounts()),
                                             as.integer(ncol(selected_geneNormCounts())-3))
@@ -196,6 +199,42 @@ shinyServer(function(input,output,session){
   #######
   # TEST
   #######
+  
+  get_matrix <- reactive({
+    # get the filtered geneExp counts 
+    m <- selected_geneNormCounts()
+    #add the row names
+    #PURE HACK : since many ensembly IDs have same gene names 
+    # and rownames(matrix) cant have duplicates
+    # forcing the heatmap to render explicity passed rownames
+    #rownames(m) <- m$gene_id
+    explicit_rownames <- as.vector(m$symbol)
+    #convert to matrix
+    m <- as.matrix(m)
+    # eliminate the first 3 cols to get rid of the annotation and convert to matrix
+    m <- m[,4:ncol(m)]
+    
+    m <- apply(m,2,as.numeric)
+    
+    
+    #removing those genes which dont vary much across the samples
+    # so any gene with SD < .2 across the samples will be dropped 
+    drop_genes <- which(apply(m,1,sd) < .2)
+    #following step to remove the bug seen 
+    #when m <-  m[-drop_genes,] is done directly and length(drop_genes) = 0
+    if(length(drop_genes) != 0){
+      m <-  m[-drop_genes,]  #filtering a mat , IMP
+      #also remove the same from the explicit rownames as those genes are taken out in anycase
+      explicit_rownames <- explicit_rownames[-drop_genes] #filtering a vector no , needed
+    }
+    mat.scaled <- t(scale(t(m))) 
+  })
+  
+  #testing interactive shiny heatmap
+  output$test_heatmap <- renderHeatmap(
+    get_matrix()
+  )
+  
   #    output$test <- renderText({
   #      selected_genes()
   # #      #print(paste( "samples:", length(selected_samples()) , sep=": "))
