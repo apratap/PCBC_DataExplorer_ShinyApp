@@ -5,8 +5,17 @@ library("org.Hs.eg.db")
 library("shiny")
 
 
+
 #load the memoised version of pheatmap
 source("geneExpression_heatMap.R")
+
+
+# #load the shiny based d3 app
+# if (!require("devtools"))
+#   install.packages("devtools")
+# if(!require("heatmap"))
+#   devtools::install_github("d3-heatmap", "jcheng5")
+library("heatmap")
 
 
 #load the external files
@@ -40,6 +49,9 @@ cat('Reading the PCBC normalized geneExp data from Synapse')
 syn_geneNormCounts <- synGet('syn2247799')
 #read in the file
 geneNormCounts <- read.table(syn_geneNormCounts@filePath,header=T,sep='\t')
+#keep only uniq gene names
+#might need to be improved
+geneNormCounts <- geneNormCounts[!duplicated(geneNormCounts$symbol),]
 cat('..Done\n\n')
 
 ######
@@ -127,13 +139,12 @@ sample_gene_list <- c("GP1BA","GP1BB", "EPO", "CD33", "TNF", "GP9", "ITGAM", "CD
 sample_gene_list <- paste(sample_gene_list,",")
 
 
-
+sigGenes_lists[["Mesoderm Day 5_vs_Endoderm Differentiated Cells"]]
 
 #########
 #read the precomputed enriched pathway list
 ########
 df_precomputed_enrichedPathways_in_geneLists = readRDS("precomputed_enrichedPathways_in_geneLists.rds")
-
 df_precomputed_enrichedPathways_in_geneLists$pathways_with_pvalue =  paste(df_precomputed_enrichedPathways_in_geneLists$pathways,
                                                                            '#p.adj_',
                                                                            format.pval(df_precomputed_enrichedPathways_in_geneLists$p.adj,digits=2),
@@ -141,12 +152,9 @@ df_precomputed_enrichedPathways_in_geneLists$pathways_with_pvalue =  paste(df_pr
 
 
 
-
 #creating a list of list 
 precomputed_enrichedPathways_in_geneLists = split(df_precomputed_enrichedPathways_in_geneLists$pathways_with_pvalue,
                                                   df_precomputed_enrichedPathways_in_geneLists$significant_gene_list_name)
-
-
 
 
 #HACK
