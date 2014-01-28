@@ -231,9 +231,9 @@ shinyServer(function(input,output,session){
   })
   
   #testing interactive shiny heatmap
-  output$test_heatmap <- renderHeatmap(
-    get_matrix()
-  )
+#   output$test_heatmap <- renderHeatmap(
+#     get_matrix()
+#   )
   
   #    output$test <- renderText({
   #      selected_genes()

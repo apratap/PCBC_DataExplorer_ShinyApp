@@ -6,8 +6,6 @@ library("plyr")
 synapseLogin()
 
 
-
-
 #########
 #Read the hg19 genes annotaiton and save a precomputed df
 ##########
@@ -20,8 +18,6 @@ saveRDS(hg19_gene_annot,"precomputed_hg19_gene_annot.RDS")
 
 
 
-
-
 ####
 #1. get the names of all the genes
 ###
@@ -30,7 +26,6 @@ syn_geneNormCounts <- synGet('syn1968267')
 #read in the file to get the names of allGenes
 geneNormCounts <- read.table(syn_geneNormCounts@filePath,header=T,sep='\t')
 allGenes <- toupper(unique(geneNormCounts$symbol))
-
 
 ######
 #2. get the siginificant gene lists
@@ -98,8 +93,6 @@ enrichedPathways_in_sigGenes_list <- subset(df, p.adj < .05)
 
 #save the precomputed results
 saveRDS(enrichedPathways_in_sigGenes_list, file="precomputed_enrichedPathways_in_geneLists.rds")
-
-
 
 
 #######################
