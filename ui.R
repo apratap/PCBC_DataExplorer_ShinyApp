@@ -78,6 +78,7 @@ shinyUI(pageWithSidebar(
                  br(), br(),
                  h4('Current Gene Selection:'),
                  verbatimTextOutput('selected_genes'))
+        #tabPanel("test",heatmapOutput('test_heatmap'))
         ) #END tabset panel
     )# END condition panel
     # TDB
