@@ -12,18 +12,12 @@ shinyUI(pageWithSidebar(
     h4('1. Select a gene list'),
     tabsetPanel(
       id = 'genelist_type',
-      #TAB PANEL 1 : precomputed sig gene list
-      tabPanel(
-                'Sig gene lists',
-                              tags$div(title="Significantly enriched gene lists as a result of pairwise comparison of all PCBC samples",
-                                       selectInput( "selected_Significant_GeneList",
-                                                   "Precomputed Significant gene lists (?)",
-                                                    choices = sort(names(precomputed_enrichedPathways_in_geneLists)) #loaded from getDATA.R
-                              )),
-                              #dynamically updated with TOOL TIP
-                              tags$div(title='Enriched KEGG pathways in the selected gene list based on FET test (padj <.05)',
-                                       selectInput('enrichedPathways','Enriched Pathways (?)',choices='ALL')),
-                value = 'precomputed_significant_geneList'
+      #TAB PANEL 1 : custom gene list
+      tabPanel('My gene list',h5('Search on a custom gene list:'),
+               tags$textarea(id="custom_gene_list",rows=5,cols=100,sample_gene_list),
+               helpText("Accepts HUGO gene names. Gene names may be separated by comma, space,line, comma "),
+               br(),
+               value='custom_gene_list'
       ), #END TAB PANEL 1
       # TAB PANEL 2 : select a pathway
       tabPanel(
@@ -33,22 +27,27 @@ shinyUI(pageWithSidebar(
                         choices = sort(names(MSigDB$C2.CP.KEGG))),     # global.R
               value='pathway'
       ),  #END TAB PANEL 2
-      #TAB PANEL 3 : custom gene list
-      tabPanel('My gene list',h5('Search on a custom gene list:'),
-                              tags$textarea(id="custom_gene_list",rows=5,cols=100,sample_gene_list),
-                              helpText("Accepts HUGO gene names. Gene names may be separated by comma, space,line, comma "),
-                              br(),
-                value='custom_gene_list'
-              ) #END TAB PANEL 3
+      #TAB PANEL 3 : precomputed sig gene list
+      tabPanel(
+        'Sig gene lists',
+        tags$div(title="Significantly enriched gene lists as a result of pairwise comparison of all PCBC samples",
+                 selectInput( "selected_Significant_GeneList",
+                              "Precomputed Significant gene lists (?)",
+                              choices = sort(names(precomputed_enrichedPathways_in_geneLists)) #loaded from getDATA.R
+                 )),
+        #dynamically updated with TOOL TIP
+        tags$div(title='Enriched KEGG pathways in the selected gene list based on FET test (padj <.05)',
+                 selectInput('enrichedPathways','Enriched Pathways (?)',choices='ALL')),
+        value = 'precomputed_significant_geneList'
+      ) #END TAB PANEL 3
     ),#END TABSET 
-    
     br(),
     #heatmap annotation labels
     checkboxGroupInput('heatmap_annotation_labels', h4('2. Color heatmap by:'),
                        choices  = names(heatmap_annotation_cols),
                        selected = c('Diff Name')),
     br(),
-    
+
     #FILTER OPTIONS
     h4('3. Filter samples by:'),
     #1. filter based on mod_linetype
@@ -62,7 +61,6 @@ shinyUI(pageWithSidebar(
   ), # END sidebarpanel
 
   
-  
   #####################
   #Main shiny panel
   #####################
@@ -70,14 +68,18 @@ shinyUI(pageWithSidebar(
     conditionalPanel(
       condition = 'output.error == FALSE',
       tabsetPanel(
-        tabPanel("Heatmap", plotOutput("heatMap",height="700px",width="auto",hoverId=NULL)),
-        tabPanel("Explore Data", downloadButton('downloadData','Download GeneExp Data'),
+        tabPanel("Heatmap", 
+                 plotOutput("heatMap",height="700px",width="auto",hoverId=NULL)
+                 ),
+        tabPanel("Explore Data", 
+                 htmlOutput("topgene_linkOut"),
+                 downloadButton('downloadData','Download Expression Data'),
                  br(), br(), br(),
-                 dataTableOutput("geneExpTable")),
-        tabPanel("Summary", tableOutput("summary"), 
-                 br(), br(),
-                 h4('Current Gene Selection:'),
-                 verbatimTextOutput('selected_genes'))
+                 dataTableOutput("geneExpTable"))
+#         tabPanel("Summary", tableOutput("summary"), 
+#                  br(), br(),
+#                  h4('Current Gene Selection:'),
+#                  verbatimTextOutput('selected_genes'))
         #tabPanel("test",heatmapOutput('test_heatmap'))
         ) #END tabset panel
     )# END condition panel

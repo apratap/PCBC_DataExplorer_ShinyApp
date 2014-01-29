@@ -43,16 +43,12 @@ shinyServer(function(input,output,session){
   #####
   selected_genes <- reactive({
     if( input$genelist_type == 'custom_gene_list'  ){
-      genes <- user_submitted_geneList()
+      genes <- unique(user_submitted_geneList())
     }
     else if( input$genelist_type == 'precomputed_significant_geneList'){
       if(input$enrichedPathways == 'ALL'){
         genes_in_selected_GeneList <- sigGenes_lists[[input$selected_Significant_GeneList]]
         genes <- unique(genes_in_selected_GeneList)
-        #get union of all the genes in the enriched pathways for this geneList
-        #enriched_pathways <- gsub('#p.adj_.*','', get_enrichedPathways())
-        #genes <- lapply(enriched_pathways,function(x) {MSigDB$C2.CP.KEGG[[x]]})
-        #genes <- Reduce(union,genes)
       }
       else{
         #1. get a list of all genes in the selected enriched pathway
@@ -77,7 +73,9 @@ shinyServer(function(input,output,session){
     }
   })
   
-
+  
+  
+    
   #########
   #get list of pathways enriched in the geneList selected by the user
   #########
@@ -120,12 +118,7 @@ shinyServer(function(input,output,session){
     geneList <- geneList[ !geneList == "" ] #remove the blank entries
     geneList
   })
-  
-  #
-  output$test <- renderText({
-    input$genelist_type
-  })
-  
+    
   #create the annotation data frame for the heatmap
   get_filtered_genesAnnotation <- reactive({
     if(length(input$heatmap_annotation_labels) == 0){
@@ -195,6 +188,22 @@ shinyServer(function(input,output,session){
       print(selected_genes,quote=FALSE)
     })
   
+  
+  output$topgene_linkOut <- reactive({
+    
+    prefix =  '<form action="http://toppgene.cchmc.org/CheckInput.action" method="post" target="_blank" display="inline">
+               <input type="hidden" name="query" value="TOPPFUN">
+               <input type="hidden" id="type" name="type" value="HGNC">
+               <input type="hidden" name="training_set" id="training_set" value="'
+    suffix = '">
+              <input type="Submit" class="btn shiny-download-link shiny-bound-output", value="Enrichment Analysis in ToppGene">
+              </form>'
+    genes <- paste(selected_genes(),collapse=" ")
+
+    #generate the HTML content
+    htmlContent <- paste(c(prefix,genes,suffix), collapse="")
+  })
+
   
   #######
   # TEST

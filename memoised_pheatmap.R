@@ -368,7 +368,7 @@ heatmap_motor = function(matrix, border_color, cellwidth, cellheight, tree_col, 
   # Draw legend IF not drawing the ROW names
   if(!is.na(legend[1])){
     length(colnames(matrix))
-    if(length(explicit_rownames) == nrow(matrix) & length(explicit_rownames) <= 50 ){
+    if(length(explicit_rownames) == nrow(matrix) & length(explicit_rownames) <= 70 ){
      # pushViewport(vplayout(4:5, 4))
      # DO NOTHING
     }

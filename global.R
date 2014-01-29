@@ -1,5 +1,4 @@
 
-
 library("synapseClient")
 library("gdata")
 library("plyr")
@@ -7,10 +6,8 @@ library("org.Hs.eg.db")
 library("shiny")
 
 
-
 #load the memoised version of pheatmap
 source("geneExpression_heatMap.R")
-
 
 # #load the shiny based d3 app
 # if (!require("devtools"))
@@ -135,13 +132,9 @@ sex <- sex[sex != "None"]
 ###
 #sample gene list of the user input area
 ###
-sample_gene_list <- c("GP1BA","GP1BB", "EPO", "CD33", "TNF", "GP9", "ITGAM", "CD34",      
-                      "CD36", "GP5", "ITGA4", "ITGA3", "KITLG", "ITGA2B",
-                      "CCL18", "CCL3", "CACNG3", "AP2B1" )
-sample_gene_list <- paste(sample_gene_list,",")
+df <- read.table("pre_selected_genelist.txt",sep="\t")
+sample_gene_list <- as.character(unique(df$V5))
 
-
-sigGenes_lists[["Mesoderm Day 5_vs_Endoderm Differentiated Cells"]]
 
 #########
 #read the precomputed enriched pathway list
