@@ -3,7 +3,7 @@
 shinyUI(pageWithSidebar(
   
   #Application title
-  headerPanel("Pathway Analysis : PCBC Expression Data "),
+  headerPanel(""),
   
   ##################################
   #SIDE BAR PANEL FOR USER OPTIONS
