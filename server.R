@@ -134,6 +134,9 @@ shinyServer(function(input,output,session){
       annotation
     }
   })
+
+  #reactive value to store precomputed shiny results
+  heatmap_compute <- reactiveValues() 
   
   
    #return the heatMap plot
@@ -150,9 +153,12 @@ shinyServer(function(input,output,session){
      m <- as.matrix(m)
      # eliminate the first 3 cols to get rid of the annotation and convert to matrix
      m <- m[,4:ncol(m)]
+     #m <- apply(m,2,as.numeric)
+     #m <- log2(m+1)
      annotation <- get_filtered_genesAnnotation()
      #plot the heatmap
-     get_geneExpression_heatMap(m,annotation,explicit_rownames = explicit_rownames)  #available in geneExpression_heatMap.R
+     heatmap_compute$results <- get_geneExpression_heatMap(m,annotation,explicit_rownames = explicit_rownames)  #available in geneExpression_heatMap.R
+     
    })
   
   
@@ -176,9 +182,19 @@ shinyServer(function(input,output,session){
   
    #prepare data for download
    output$downloadData <- downloadHandler(
-     filename = function() { paste('PCBC_geneExpr_data_for_',gsub(' ','_',input$user_selected_pathway),'_pathway.csv')},
+     filename = function() { paste('PCBC_geneExpr_data.csv')},
      content  = function(file){
-       write.csv(selected_geneNormCounts(),file,row.names=FALSE)
+       #ordering the rows based on the clustering order as determined by heatmap clustering
+       row_order =  heatmap_compute$results[[1]]$order
+       col_order =  heatmap_compute$results[[2]]$order
+       df = selected_geneNormCounts()
+       #reorder rows based on clustering
+       df = df[row_order,]
+       #reorder columns based on clustering
+       #just reodering the cols after first three cols of annotation
+       ordered_cols_df <- df[,c(4:ncol(df))][,col_order]
+       df <- cbind(df[,c(1:3)], ordered_cols_df)
+       write.csv(df,file,row.names=FALSE)
      })
     
     #gene list to display
