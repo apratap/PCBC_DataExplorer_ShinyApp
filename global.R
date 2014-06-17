@@ -56,6 +56,13 @@ source("mRNA_data_prep.R")
 source("miRNA_data_prep.R")
 
 
+#sanity check matrix
+sanity_check_matrix <- function(m){
+  if(length(m) == 0){
+    stop('Current filtering settings produces a Null expression matrix...\n Refresh to reset or choose other options ')
+  }
+}
+
 
 
 #filter metadata

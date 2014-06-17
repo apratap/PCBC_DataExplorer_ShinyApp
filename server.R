@@ -1,24 +1,7 @@
-#sanity check matrix
-sanity_check_matrix <- function(m){
-  if(length(m) == 0){
-    stop('Current filtering settings produces a Null expression matrix...\n Refresh to reset or choose other options ')
-  }
-}
-
-
-
 #Define the server the logic
 shinyServer(function(input,output,session){
   
-  error <- reactiveValues( state='FALSE', message='None')
-  
-  #Default Error state
-  output$error <- renderText({error$state})
-
-
-  #####
   #get list of genes in current pathway or user entered list
-  #####
   selected_genes <- reactive({
     if( input$genelist_type == 'custom_gene_list'  ){
       genes <- unique(user_submitted_geneList())
@@ -42,21 +25,19 @@ shinyServer(function(input,output,session){
       #get the list of genes in the KEGG pathway
       genes <- MSigDB$C2.CP.KEGG[[pathway]]
     }
-#     if(length(genes) <= 2){
-#       error_msg = sprintf('too few genes %d to cluster', length(genes))
-#       stop(error_msg)
-#     }
     else{
       genes
     }
   })
     
+  
   #get list of pathways enriched in the geneList selected by the user
   get_enrichedPathways <- reactive({
       #return the enriched pathway for a gene list
       #labels contain the pvalue of the FET test       
       precomputed_enrichedPathways_in_geneLists[[input$selected_Significant_GeneList]]
   })
+  
   
   #update the enriched pathways for the user selected genelist
   observe({
@@ -79,7 +60,7 @@ shinyServer(function(input,output,session){
   })
     
  
-  output$test <- renderPrint({
+  output$mRNA_compute_time <- renderPrint({
     print(mRNA_heatmap_compute_results$results$time)
   })
   
@@ -116,8 +97,12 @@ shinyServer(function(input,output,session){
   
   mRNA_cache_time <- reactiveValues()
   output$mRNA_cache_time = renderPrint({
-    #print(dim(miRNA_normCounts))
     print(mRNA_cache_time$time)
+  })
+  
+  
+  output$microRNA_compute_time = renderPrint({
+    print(microRNA_heatmap_compute_results$time)
   })
   
 
@@ -125,7 +110,6 @@ shinyServer(function(input,output,session){
   microRNA_heatmap_compute_results <- reactiveValues() 
 
   output$microRNA_heatMap <- renderPlot({
-    
     #a.) get the list of ensembl genes selected
     filtered_mRNANormCounts <- subset(mRNA_NormCounts, symbol %in% selected_genes())
     selected_genes_ensembl_id <- gsub('\\..*','',filtered_mRNANormCounts$gene_id)
@@ -147,9 +131,9 @@ shinyServer(function(input,output,session){
     # forcing the heatmap to render explicity passed rownames
     #rownames(m) <- m$gene_id
     explicit_rownames <- as.vector(row.names(m))
-    #print(dim(m))
     annotation <- get_filtered_genesAnnotation(input,filtered_miRNA_metadata)
-    #print(dim(annotation))
+    
+    start_time <- proc.time()
     #plot the heatmap
     get_geneExpression_heatMap(m,
                                annotation,
@@ -157,11 +141,10 @@ shinyServer(function(input,output,session){
                                color=colorRampPalette(rev(brewer.pal(n = 7, name = "BrBG")))(100)
                                )  #available in geneExpression_heatMap.R
     microRNA_heatmap_compute_results$filtered_microRNANormCounts <- filtered_microRNANormCounts 
+    microRNA_heatmap_compute_results$time <- proc.time() - start_time
   })
   
-  #####
   #create a table with selected gene list and merge with some annotation
-  #####
   output$geneExpTable <- renderDataTable({
     filtered_mRNA_NormCounts <- subset(mRNA_NormCounts, symbol %in% selected_genes())
     df <- merge(filtered_mRNA_NormCounts[,1:3], hg19_gene_annot, by.x='symbol',by.y='SYMBOL')
@@ -255,8 +238,6 @@ shinyServer(function(input,output,session){
     mRNA_cache_time$time = proc.time() - start_time
     list(src= plot_file)
   },deleteFile=FALSE)
-
-
 })
 
 

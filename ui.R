@@ -84,16 +84,23 @@ shinyUI( fluidPage(
                    br(),
                    h5('summary'),
                    tableOutput("mRNA_summary"),
+                   br(),
                    h5('compute time'),
-                   verbatimTextOutput("test")
+                   verbatimTextOutput("mRNA_compute_time")
                    ),
-          tabPanel("mRNA (cached)",
-                   plotOutput("mRNA_cached_heatMap", height="auto", width="700px", hoverId=NULL ),
-                   verbatimTextOutput("mRNA_cache_time")
-          ),
-          tabPanel("miRNA (test)",
+#           tabPanel("mRNA (cached)",
+#                    plotOutput("mRNA_cached_heatMap", height="auto", width="700px", hoverId=NULL ),
+#                    verbatimTextOutput("mRNA_cache_time")
+#           ),
+          tabPanel("microRNA",
                    plotOutput("microRNA_heatMap",height="700px",width="auto",hoverId=NULL),
-                   tableOutput("microRNA_summary")
+                   br(),
+                   br(),
+                   h5('summary'),
+                   tableOutput("microRNA_summary"),
+                   br(),
+                   h5('compute time'),
+                   verbatimTextOutput('microRNA_compute_time')
           ),
           tabPanel("Explore Data", 
                    htmlOutput("topgene_linkOut"),
