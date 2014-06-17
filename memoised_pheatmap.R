@@ -2,7 +2,9 @@ require(grid)
 require(RColorBrewer)
 require(memoise)
 
-lo = function(rown, coln, nrow, ncol, cellheight = NA, cellwidth = NA, treeheight_col, treeheight_row, legend, annotation, annotation_colors, annotation_legend, main, fontsize, fontsize_row, fontsize_col, ...){
+lo = function(rown, coln, nrow, ncol, cellheight = NA, cellwidth = NA, 
+              treeheight_col, treeheight_row, legend, annotation, annotation_colors, annotation_legend, 
+              main, fontsize, fontsize_row, fontsize_col, ...){
   # Get height of colnames and length of rownames
   if(!is.null(coln[1])){
     longest_coln = which.max(strwidth(coln, units = 'in'))
@@ -655,6 +657,8 @@ memoised_pheatmap = function(mat, color = colorRampPalette(rev(brewer.pal(n = 7,
                     fontsize_row = fontsize, fontsize_col = fontsize, display_numbers = F, number_format = "%.2f", 
                     fontsize_number = 0.8 * fontsize, filename = NA, width = NA, height = NA, 
                     useRaster=FALSE, drawRowD=TRUE, explicit_rownames = 'none', ...){
+  #time at which process started
+  start_time = proc.time()
   
   # Preprocess matrix
   mat = as.matrix(mat)
@@ -682,6 +686,7 @@ memoised_pheatmap = function(mat, color = colorRampPalette(rev(brewer.pal(n = 7,
   # Do clustering
   if(cluster_rows){
     tree_row = memoised_cluster_mat(mat, distance = clustering_distance_rows, method = clustering_method)
+    #tree_row = cluster_mat(mat, distance = clustering_distance_rows, method = clustering_method)
     mat = mat[tree_row$order, , drop = FALSE]
   }
   else{
@@ -691,6 +696,7 @@ memoised_pheatmap = function(mat, color = colorRampPalette(rev(brewer.pal(n = 7,
   
   if(cluster_cols){
     tree_col = memoised_cluster_mat(t(mat), distance = clustering_distance_cols, method = clustering_method)
+    #tree_col = cluster_mat(t(mat), distance = clustering_distance_cols, method = clustering_method)
     mat = mat[, tree_col$order, drop = FALSE]
   }
   else{
@@ -763,7 +769,10 @@ memoised_pheatmap = function(mat, color = colorRampPalette(rev(brewer.pal(n = 7,
                 fontsize_number = fontsize_number, useRaster=useRaster, drawRowD=drawRowD,
                 explicit_rownames = explicit_rownames, ...)
   
-  invisible(list(tree_row = tree_row, tree_col = tree_col, kmeans = km))
+  #end time
+  end_time = proc.time()
+  total_time = end_time - start_time
+  invisible(list(tree_row = tree_row, tree_col = tree_col, kmeans = km, time=total_time))
   #return(mat)
   
 }
