@@ -108,7 +108,7 @@ heatmap_annotation_cols <- c('Gender'='donorsex','line type'='mod_linetype',
 
 
 #1. sex
-sex <- unique(metadata$donorsex)
+sex <- unique(mRNA_metadata$donorsex)
 sex <- sex[sex != "None"]
 
 

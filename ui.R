@@ -63,13 +63,13 @@ shinyUI( fluidPage(
       #FILTER OPTIONS
       h4('3. Filter samples by:'),
       #1. filter based on mod_linetype
-      checkboxGroupInput('mod_linetype', h5('Line type'),choices=sort(unique(metadata$mod_linetype) ) ),
+      checkboxGroupInput('mod_linetype', h5('Line type'),choices=sort(unique(mRNA_metadata$mod_linetype) ) ),
       #2. filter based on diff_short_name
-      checkboxGroupInput('mod_diffnameshort',h5('Differentiation name'),choices= sort(unique(metadata$mod_diffnameshort) ) ),
+      checkboxGroupInput('mod_diffnameshort',h5('Differentiation name'),choices= sort(unique(mRNA_metadata$mod_diffnameshort) ) ),
       #3. filter based on cell origin
-      checkboxGroupInput('cell_origin',h5('Cell origin'),choices=sort(unique(metadata$mod_origcell) ) ),
+      checkboxGroupInput('cell_origin',h5('Cell origin'),choices=sort(unique(mRNA_metadata$mod_origcell) ) ),
       #4. filter based on induction genes
-      checkboxGroupInput('induction_genes',h5('Induction genes used'),choices=sort(unique(metadata$inductiongenes) ) )
+      checkboxGroupInput('induction_genes',h5('Induction genes used'),choices=sort(unique(mRNA_metadata$inductiongenes) ) )
     ), # END sidebarpanel
 
   
