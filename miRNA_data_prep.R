@@ -1,128 +1,60 @@
-library("preprocessCore")
-
-
 ###
 #get the PCBC samples raw miRNA counts
 ###
 cat('Reading the PCBC raw miRNA Exp data from Synapse')
-miRNA_rawCounts <- synGet('syn2247832')
-#read in the file
-miRNA_rawCounts <- read.table(miRNA_rawCounts@filePath,header=T,sep='\t')
-#keep only uniq miRNA #might need to be improved
-miRNA_rawCounts <- miRNA_rawCounts[!duplicated(miRNA_rawCounts$mir),]
-rownames(miRNA_rawCounts) <- miRNA_rawCounts$mir
-miRNA_rawCounts$mir <- NULL
+miRNA_normCounts <- synGet('syn2701942')
+miRNA_normCounts <- read.delim(miRNA_normCounts@filePath, header=T, sep='\t', as.is=T, stringsAsFactors = F, check.names=F)
+temp_rownames <- tolower(miRNA_normCounts$mir)
+miRNA_normCounts$mir <- NULL
+miRNA_normCounts <- apply(miRNA_normCounts,2, function(x) as.numeric(x))
+rownames(miRNA_normCounts) <- temp_rownames
 cat('..Done\n\n')
 
-#Filter miRNA that have 0 expression in > 50 percent samples
-miRNA_to_keep = apply(miRNA_rawCounts,1,function(x) sum(is.na(x))/length(x) < .50)
-miRNA_rawCounts <- miRNA_rawCounts[miRNA_to_keep,]
-#subtitute NA values with 0
-miRNA_rawCounts[is.na(miRNA_rawCounts)] = 0
-
-#Quantile Normalize
-miRNA_normCounts <- normalize.quantiles(as.matrix(miRNA_rawCounts))
-colnames(miRNA_normCounts) <- colnames(miRNA_rawCounts)
-#split the paired miRNA name and use the second name
-temp_miRNAs_names <- as.data.frame(do.call('rbind',strsplit(rownames(miRNA_rawCounts),',')))
-rownames(miRNA_normCounts) <- temp_miRNAs_names[,2]
-
-
 #get the miRNA to genes mapping table from synapse
+cat('Reading the miRNA to genes mapping table')
 miRNA_to_genes <- synGet('syn2246991')
-miRNA_to_genes <- read.table(miRNA_to_genes@filePath, header=T, stringsAsFactors=FALSE)
+miRNA_to_genes <- read.delim(miRNA_to_genes@filePath, header=T, sep="\t", stringsAsFactors=FALSE, check.names=F)
+miRNA_to_genes$mirName <- tolower(miRNA_to_genes$Pathway)
+miRNA_to_genes$SystemCode <- NULL
+miRNA_to_genes$Pathway <- NULL
+miRNA_to_genes$mirName <- tolower(gsub('\\*', '', miRNA_to_genes$mirName))
+miRNA_to_genes$mirName <- gsub('-.p', '', miRNA_to_genes$mirName)
 
-#length(unique(miRNA_to_genes$Pathway))
-#sum(unique(row.names(miRNA_normCounts)) %in% unique(miRNA_to_genes$Pathway))
+####
+#match the miRNA exp matrix row names to target genes
+#####
+#split the paired miRNA name and use the second name
+temp_miRNAs_names <- as.data.frame(do.call('rbind',strsplit(rownames(miRNA_normCounts),',')), stringsAsFactors = F)
+temp_miRNAs_names <- as.data.frame(apply(temp_miRNAs_names,2,tolower),stringAsFactors=F)
+colnames(temp_miRNAs_names) <- c('miRNA1', 'miRNA2')
+temp_miRNAs_names['miRNAPrecursor'] <- unlist(lapply(strsplit(as.character(temp_miRNAs_names[,'miRNA1']),split='-'), function(x) paste(x[1:3], collapse='-')))
+miRNA_to_genes <- merge(temp_miRNAs_names, miRNA_to_genes, by.x='miRNAPrecursor', by.y='mirName', all.x=T)
+#remove dups
+miRNA_to_genes <- miRNA_to_genes[!duplicated(miRNA_to_genes),]
+cat('..Done\n\n')
 
 
-#sum(unique(miRNA_to_genes$GeneID) %in% unique(mRNA_NormCounts$mod_gene_id))
-
-
-
-
-# gsub("(.*)","",mRNA_NormCounts$gene_id)
-# mRNA_NormCounts$gene_id
-
-
-
-                     
-###
-#get the metadata from the synapse for PCBC samples
-###
-# miRNA_METADATA_ID <- 'syn2248741'
-# query <- sprintf('select * from entity where parentId=="%s"', miRNA_METADATA_ID)
-# miRNA_metadata <- synQuery(query)
-# cols_to_be_deleted = c('entity.benefactorId', 'entity.concreteType', 'entity.createdByPrincipalId', 
-#                        'entity.createdOn', 'entity.createdByPrincipalId', 'entity.id', 
-#                        'entity.modifiedOn', 'entity.modifiedByPrincipalId', 'entity.noteType', 
-#                        'entity.versionLabel', 'entity.versionComment', 'entity.versionNumber', 
-#                        'entity.parentId', 'entity.description', 'entity.eTag')
-# #delete the unwanted cols
-# miRNA_metadata <- miRNA_metadata[,!names(miRNA_metadata) %in% cols_to_be_deleted]
+##########
+#the following were tried 
+##########
+# temp_miRNAs_names['test1'] <- unlist(lapply(strsplit(as.character(temp_miRNAs_names[,'V1']),split='-'), function(x) paste(x[1:3], collapse='-')))
+# temp_miRNAs_names['test2'] <- unlist(lapply(strsplit(as.character(temp_miRNAs_names[,'V2']),split='-'), function(x) paste(x[1:3], collapse='-')))
 # 
-# #remove the prefix 'entity.' from the df col names
-# names(miRNA_metadata) <- gsub('entity.','',names(miRNA_metadata))
+# length(unique(temp_miRNAs_names[,1][temp_miRNAs_names[,1] %in% miRNA_to_genes$mirName]))
+# length(unique(temp_miRNAs_names[,'test1'][temp_miRNAs_names[,'test1'] %in% miRNA_to_genes$mirName]))
+# length(unique(temp_miRNAs_names[,'test1'][temp_miRNAs_names[,'test1'] %in% gsub('-.p', '', miRNA_to_genes$mirName)]))
+
+# length(unique(temp_miRNAs_names[,2][temp_miRNAs_names[,2] %in% miRNA_to_genes$mirName]))
+# length(unique(temp_miRNAs_names[,'test2'][temp_miRNAs_names[,'test2'] %in% miRNA_to_genes$mirName]))
+# length(unique(temp_miRNAs_names[,'test2'][temp_miRNAs_names[,'test2'] %in% gsub('-.p', '', miRNA_to_genes$mirName)]))
 
 
-
-####
-#TEMP : getting the metadata from an external file
-####
-miRNA_metadata_ID <- 'syn2501833'
-miRNA_metadata <- synGet(miRNA_metadata_ID)
-miRNA_metadata <- read.table(miRNA_metadata@filePath,sep=",",header=T, stringsAsFactors=F)
-
-########
-#create new higher order labels for heatmap labels
-#groups are merged into higher order
-########
-
-#1. linetype
-# merge everthing other than hESC , iPSC, None into tissue
-miRNA_metadata$Cell.Line.Type[miRNA_metadata$Cell.Line.Type == 'ESC'] = 'hESC'
-miRNA_metadata$mod_linetype <-  miRNA_metadata$Cell.Line.Type
-#index_to_be_replaced <-  ! miRNA_metadata$linetype %in% c('hESC','iPSC','None')
-index_to_be_replaced <-  ! miRNA_metadata$Cell.Line.Type %in% c('hESC','iPSC','None')
-miRNA_metadata$mod_linetype[index_to_be_replaced] = 'tissue'
-
-
-#2. diffnameshort
-miRNA_metadata$mod_diffnameshort <- miRNA_metadata$Diffname.Short
-#2A. EB-LF should be renamed EB and similarly SC-LF should be SC
-miRNA_metadata$mod_diffnameshort <- sub('SC-.*','SC',miRNA_metadata$mod_diffnameshort)
-miRNA_metadata$mod_diffnameshort <- sub('EB-.*','EB',miRNA_metadata$mod_diffnameshort)
-#2B. anything except the following should be grouped into Other
-# SC, EB, DE, ECTO, MESO, MESO-30, MESO-15
-index_to_be_replaced <- ! miRNA_metadata$mod_diffnameshort %in% c('SC', 'EB', 'DE', 'ECTO', 'MESO', 'MESO-30', 'MESO-15')
-miRNA_metadata$mod_diffnameshort[index_to_be_replaced] = 'Others'
-
-
-#3. origcell
-miRNA_metadata$mod_origcell <- miRNA_metadata$Cell.Type.of.Origin
-table(miRNA_metadata$Cell.Type.of.Origin)
-#miRNA_metadata$mod_origcell <- miRNA_metadata$origcell
-#3A. categorize UCB CD34+ into CD34+
-miRNA_metadata$mod_origcell <- sub('^.*CD34\\+$','CD34+',miRNA_metadata$mod_origcell,perl=T)
-miRNA_metadata$mod_origcell <- sub('^.*CD34\\+.*$','CD34+',miRNA_metadata$mod_origcell,perl=T)
-#3B. categ bone marrow to BM MSC
-miRNA_metadata$mod_origcell <- sub('bone marrow','BM MSC',miRNA_metadata$mod_origcell,perl=T)
-#3C. adultHeart to tissue
-miRNA_metadata$mod_origcell <- sub('adultHeart','tissue',miRNA_metadata$mod_origcell,perl=T)
-#3C. categ the following into Others
-Others_group <- c('embryo', 'primEndothel', 'skin', 'None', 'cardiac endothelial cell',
-                  'mesenchymal stem cell', 'cardiac myocyte', 'inner cell mass', 'mononuclear',
-                  'pulmonary artery endothelium', 'N/A')
-index_to_be_replaced <- miRNA_metadata$mod_origcell %in% Others_group
-miRNA_metadata$mod_origcell[index_to_be_replaced] <- 'Others'
-
-#4. Induction genes
-miRNA_metadata$inductiongenes <- miRNA_metadata$Reprogramming.Gene.Combination
-
-#5. decoratedName
-miRNA_metadata$decoratedName <- gsub('-','.',as.vector(miRNA_metadata$uid))
-
-#6. Gender
-miRNA_metadata$donorsex <- miRNA_metadata$Gender
-
-
+#miRNA metadata
+cat('Reading the PCBC  miRNA metadata')
+miRNA_metadata <- synGet('syn2731149') 
+miRNA_metadata <- read.delim(miRNA_metadata@filePath, header=T, sep='\t',as.is=T, stringsAsFactors = F, check.names=F)
+rownames(miRNA_metadata) <- miRNA_metadata$sample
+#keep only those samples that are present in the expression matrix
+rows_to_keep <- rownames(miRNA_metadata) %in% colnames(miRNA_normCounts)
+miRNA_metadata <- miRNA_metadata[rows_to_keep, ]
+cat('..Done\n\n')

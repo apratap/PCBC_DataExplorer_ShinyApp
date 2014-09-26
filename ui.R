@@ -1,35 +1,39 @@
-
+library(shinyIncubator)
 
 
 #main UI code
 shinyUI( fluidPage(
-  
-  #Application title
-  #titlePanel(""),
   
   sidebarLayout(
     ##################################
     #SIDE BAR PANEL FOR USER OPTIONS
     ##################################
     sidebarPanel(
+      progressInit(),
       h4('1. Select a gene list'),
       tabsetPanel(
         id = 'genelist_type',
         #TAB PANEL 1 : custom gene list
-        tabPanel('My gene list',h5('Search on a custom gene list:'),
+        tabPanel('My Search',h5('1.a. Search on a custom gene list:'),
+                 helpText("Accepts HUGO/Ensembl/Entrez gene id's separated either by comma, space, line"),
                  tags$textarea(id="custom_gene_list",rows=8,cols=200,paste0(sample_gene_list, collapse=', ')),
-                 helpText("Accepts HUGO gene names. Gene names may be separated by comma, space,line, comma "),
+                 checkboxInput('incl_corr_genes', 'also include correlated genes', value = FALSE),
+                 sliderInput('corr_threshold', label='Correlation Threshold', min=0.5, max=1.0, value=0.9, step=0.05),
+                 br(),
+                 h5('1.b. Search on a custom miRNA list:'),
+                 helpText("Accepts mirbase ids separated by comma, space,line, comma "),
+                 tags$textarea(id="custom_miRNA_list",rows=4,cols=200),
                  br(),
                  value='custom_gene_list'
         ), #END TAB PANEL 1
         # TAB PANEL 2 : select a pathway
         tabPanel(
                 'Pathways',
-                selectInput("selected_pathway",
+                selectInput("selected_pathways",
                             "Pathways",
-                            choices = sort(names(MSigDB$C2.CP.KEGG)), # global.R
-                            selectize=FALSE
-                            ),     
+                            choices = names(pathways_list), selectize=T, multiple=T, width='400px',
+                            selected = names(pathways_list)[c(1:2)]),
+                br(), br(), br(), br(), br(), br(),
                 value='pathway'
         ),  #END TAB PANEL 2
         #TAB PANEL 3 : precomputed sig gene list
@@ -53,23 +57,47 @@ shinyUI( fluidPage(
       ),#END TABSET 
   
       br(),
-      br(),
       #heatmap annotation labels
-      checkboxGroupInput('heatmap_annotation_labels', h4('2. Color heatmap by:'),
-                         choices  = names(heatmap_annotation_cols),
-                         selected = c('Diff Name')),
+      selectInput('heatmap_annotation_labels', h4('2. Color heatmap by:'),
+                   choices  = colnames(combined_metadata),selected='Differentiation_State'),
       br(),
-  
+      
+      
+      
       #FILTER OPTIONS
       h4('3. Filter samples by:'),
       #1. filter based on mod_linetype
-      checkboxGroupInput('mod_linetype', h5('Line type'),choices=sort(unique(mRNA_metadata$mod_linetype) ) ),
-      #2. filter based on diff_short_name
-      checkboxGroupInput('mod_diffnameshort',h5('Differentiation name'),choices= sort(unique(mRNA_metadata$mod_diffnameshort) ) ),
-      #3. filter based on cell origin
-      checkboxGroupInput('cell_origin',h5('Cell origin'),choices=sort(unique(mRNA_metadata$mod_origcell) ) ),
-      #4. filter based on induction genes
-      checkboxGroupInput('induction_genes',h5('Induction genes used'),choices=sort(unique(mRNA_metadata$inductiongenes) ) )
+      selectInput('linetype', h5('Line type'), choices=unique(combined_metadata$Line_Type),
+                  selectize=T, multiple=T, selected=c('ESC')),
+      br(),
+      selectInput('gene_combination', h5('Reprogramming Gene Combination'), choices=unique(combined_metadata$Reprogramming_Gene_Combination),
+                  selectize=T, multiple=T),
+      br(),
+      selectInput('vector_type', h5('Reprogramming Vector Type'), choices=unique(combined_metadata$Reprogramming_Vector_Type),
+                  selectize=T, multiple=T),
+      br(),
+      selectInput('tissue_origin', h5('Tissue of Origin'), choices=unique(combined_metadata$Tissue_of_Origin),
+                  selectize=T, multiple=T),
+      br(),
+      selectInput('diff_state', h5('Differentiation State'), choices=unique(combined_metadata$Differentiation_State),
+                  selectize=T, multiple=T),
+      br(),
+      selectInput('cell_origin', h5('Cell Type of Origin'), choices=unique(combined_metadata$Cell_Type_of_Origin),
+                  selectize=T, multiple=T),
+      br(),
+      selectInput('gender', h5('Gender'), choices=unique(combined_metadata$Gender),
+                  selectize=T, multiple=T),
+      br(),
+      
+      h4('4. Heatmap Settings:'),
+      #distance metric
+      selectInput("clustering_distance","Distance Calculation",
+                  choices=c("correlation", "euclidean", "maximum", "manhattan", "canberra", "binary", "minkowski"),
+                  selectize=T, multiple=F, selected="correlation"),
+      #linkage 
+      selectInput("clustering_method","Clustering Method",
+                  choices=c("ward", "single", "complete", "average", "mcquitty", "median", "centroid"),
+                  selectize=T, multiple=F, selected="complete")
     ), # END sidebarpanel
 
   
@@ -97,7 +125,7 @@ shinyUI( fluidPage(
                    br(),
                    br(),
                    h5('summary'),
-                   tableOutput("microRNA_summary"),
+                   #tableOutput("microRNA_summary"),
                    br(),
                    h5('compute time'),
                    verbatimTextOutput('microRNA_compute_time')

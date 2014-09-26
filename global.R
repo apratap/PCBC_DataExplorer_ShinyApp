@@ -1,123 +1,53 @@
+#load the memoised version of pheatmap
+options(stringsAsFactors = F)
+options(warn=-1)
+library(devtools)
 library("synapseClient")
 library("gdata")
-library("plyr")
-library("org.Hs.eg.db")
 library("shiny")
 library("digest")
+library("dplyr")
+library("org.Hs.eg.db")
 
-#load the memoised version of pheatmap
-source("geneExpression_heatMap.R")
+#source the heatmap code
+source_url("https://raw.githubusercontent.com/apratap/apRs/master/expression_heatmap.R")
 
-# #load the shiny based d3 app
-# if (!require("devtools"))
-#   install.packages("devtools")
-# if(!require("heatmap"))
-#   devtools::install_github("d3-heatmap", "jcheng5")
-#library("heatmap")
-
-
-#load the external files
-# available through shiny
-includeScript('css/tooltip.css')
+#source generic heatmap functions
+source_url("https://raw.githubusercontent.com/apratap/apRs/master/generic_annotation_functions.R")
 
 #login to synapse
 synapseLogin()
-
-
-#create a dir to store plots if it doesnt exist
-cache_dir <- ".plotcache"
-dir.create(cache_dir, showWarnings = FALSE)
-cache_dir <- normalizePath('.plotcache')
-plot_cache_lookup <- list()
 
 ## WORKAROUND : mainly to avoid creating on the fly as org.Hs.eg.db on shiny server is old
 #precomputed in precompute.R
 hg19_gene_annot <- readRDS("precomputed_data/precomputed_hg19_gene_annot.RDS")
 
-
-###
 #get the MsigDB object
-###
 cat('Reading the MSIGDB object from synapse...')
 MSIGDB_syn<-synGet("syn2227979")
 load(MSIGDB_syn@filePath) #available as MSigDB R object
+pathways_list <- c(MSigDB$C2.CP.BIOCARTA, MSigDB$C2.CP.KEGG, MSigDB$C2.CP.REACTOME)
 cat('..Done\n\n')
 
-
-#####
 #get the mRNA expression data
-#####
 source("mRNA_data_prep.R")
 
-
-#####
 #get the miRNA expression data
-#####
 source("miRNA_data_prep.R")
 
+#get the methylation data
+source("methylation_data_prep.R")
 
-#sanity check matrix
-sanity_check_matrix <- function(m){
-  if(length(m) == 0){
-    stop('Current filtering settings produces a Null expression matrix...\n Refresh to reset or choose other options ')
-  }
-}
+#get the global functions
+source("global_functions.R")
 
-
-
-#filter metadata
-get_filtered_metadata <- function(input, metadata){
-  filtered_metadata <- metadata
-  #1. Filter based on user selected line type
-  if( length(input$mod_linetype) != 0 ){
-    filtered_metadata <- subset(filtered_metadata, mod_linetype %in% input$mod_linetype)
-  }
-  #2. filter based on user selected short differentiation name
-  if( length(input$mod_diffnameshort) != 0 ){
-    filtered_metadata <- subset(filtered_metadata, mod_diffnameshort %in% input$mod_diffnameshort)  
-  }
-  #3. filter based on cell origin
-  if(length(input$cell_origin) != 0){
-    filtered_metadata <- subset(filtered_metadata, mod_origcell %in% input$cell_origin)
-  }
-  #4. filter based on induction genes
-  if(length(input$induction_genes) != 0){
-    filtered_metadata <- subset(filtered_metadata, inductiongenes %in% input$induction_genes)
-  }
-  # converting to match the  sample names in the geneNorm counts matrix
-  filtered_metadata$bamName <- gsub('-','.',as.vector(filtered_metadata$decoratedName))
-  filtered_metadata
-}
-
-
-#create the annotation data frame for the heatmap
-get_filtered_genesAnnotation <- function(input,metadata){
-  if(length(input$heatmap_annotation_labels) == 0){
-    stop('please select atleast one heatmap annotation variable \n\n')      
-  }
-  else{
-    annotation_cols <- heatmap_annotation_cols[input$heatmap_annotation_labels]
-    annotation <- as.data.frame(metadata[,annotation_cols])
-    names(annotation) <- input$heatmap_annotation_labels
-    #assign the sample names to row names so that the heatmap function could use them for labelling
-    rownames(annotation) <- metadata$bamName
-    annotation
-  }
-}
-
-
-
-
-#create heatmap annotation labels
-heatmap_annotation_cols <- c('Gender'='donorsex','line type'='mod_linetype',
-                             'Diff Name'='mod_diffnameshort','Cell Origin'='mod_origcell',
-                             'Induction Genes' = 'inductiongenes')
-
-
-#1. sex
-sex <- unique(mRNA_metadata$donorsex)
-sex <- sex[sex != "None"]
-
+#prepare single global metadata
+column_names <- c('Sample', colnames(mRNA_metadata)[-1])
+colnames(mRNA_metadata) <- c(1:8)
+colnames(miRNA_metadata) <- c(1:8)
+colnames(meth_metadata) <- c(1:8)
+combined_metadata <- rbind(mRNA_metadata, miRNA_metadata, meth_metadata, deparse.level = 0)
+colnames(combined_metadata) <- gsub('\\s+','_',column_names,perl=T)
 
 
 #sample gene list of the user input area
@@ -144,10 +74,26 @@ precomputed_enrichedPathways_in_geneLists = split(df_precomputed_enrichedPathway
 precomputed_enrichedPathways_in_geneLists <- lapply(precomputed_enrichedPathways_in_geneLists,function(x) { x[length(x)+1] = 'ALL'; x})
 
 
+#####################
+#OLD code
+#####################
 
-#add place holder for custom gene list
-#precomputed_enrichedPathways_in_geneLists[['Custom gene list']] = 'NA'
+# #create a dir to store plots if it doesnt exist
+# cache_dir <- ".plotcache"
+# dir.create(cache_dir, showWarnings = FALSE)
+# cache_dir <- normalizePath('.plotcache')
+# plot_cache_lookup <- list()
 
+# #load the shiny based d3 app
+# if (!require("devtools"))
+#   install.packages("devtools")
+# if(!require("heatmap"))
+#   devtools::install_github("d3-heatmap", "jcheng5")
+#library("heatmap")
+
+#load the external files
+# available through shiny
+#includeScript('css/tooltip.css')
 
 
 
