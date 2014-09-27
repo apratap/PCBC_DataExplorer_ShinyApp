@@ -18,10 +18,6 @@ source_url("https://raw.githubusercontent.com/apratap/apRs/master/generic_annota
 #login to synapse
 synapseLogin()
 
-## WORKAROUND : mainly to avoid creating on the fly as org.Hs.eg.db on shiny server is old
-#precomputed in precompute.R
-hg19_gene_annot <- readRDS("precomputed_data/precomputed_hg19_gene_annot.RDS")
-
 #get the MsigDB object
 cat('Reading the MSIGDB object from synapse...')
 MSIGDB_syn<-synGet("syn2227979")
@@ -50,9 +46,20 @@ combined_metadata <- rbind(mRNA_metadata, miRNA_metadata, meth_metadata, deparse
 colnames(combined_metadata) <- gsub('\\s+','_',column_names,perl=T)
 
 
+#HTML notes
+#1. methylation
+global_meth_data_notes <- '<pre style="color: rgb(170, 170, 170); font-style: italic;"> <em><strong>Data Processing Notes:</strong></em><br>Methylation probes with variation &gt; .01 across all samples were choosen from the normalized data matrix(<a href="https://www.synapse.org/#!Synapse:syn2233188" target="_blank">syn223318</a>). The probes were mapped to gene location using a mapping file(<a href="https://www.synapse.org/#!Synapse:syn2324928" target="_blank"><span style="font-family: \'Helvetica Neue\', Helvetica, Arial, sans-serif; font-size: 13.63636302948px; line-height: 18.1818180084229px; background-color: rgb(249, 249, 249);">syn2324928</span></a>)</pre>'
+#2. mRNA data notes
+global_mRNA_data_notes  <- '<pre><span style="color: rgb(170, 170, 170); font-style: italic;"><em><strong>Data Processing Notes:</strong></em><br>Using mRNA normalized data matrix from </span><a href="https://www.synapse.org/#!Synapse:syn2701943" target="_blank">syn2701943</a><span style="color: rgb(170, 170, 170); font-style: italic;"> and metadata from </span><a href="https://www.synapse.org/#!Synapse:syn2731147" target="_blank">syn2731147</a></pre>'
+#3. miRNA data notes
+global_miRNA_data_notes <- '<pre style="color: rgb(170, 170, 170); font-style: italic;"><em><strong>Data Processing Notes:</strong></em><br>Using miRNA normalized data matrix from <a href="https://www.synapse.org/#!Synapse:syn2701942" target="_blank">syn2701942</a> and metadata from <a href="https://www.synapse.org/#!Synapse:syn2731149" target="_blank"><span style="font-family: \'Helvetica Neue\', Helvetica, Arial, sans-serif; font-size: 13.63636302948px; line-height: 18.1818180084229px; background-color: rgb(249, 249, 249);">syn2731149</span></a>. The miRNAs target genes were mapped using the file <a href="https://www.synapse.org/#!Synapse:syn2246991" target="_blank">syn2246991</a>.</pre>'
+
 #sample gene list of the user input area
 df <- read.table("precomputed_data/pre_selected_genelist.txt",sep="\t")
 sample_gene_list <- as.character(unique(df$V5))
+
+sample_miRNAs <- c("hsa-mir-627", "hsa-mir-34c", "hsa-let-7g",
+                   "hsa-mir-19a", "hsa-mir-342")
 
 #########
 #read the precomputed enriched pathway list
@@ -62,7 +69,6 @@ df_precomputed_enrichedPathways_in_geneLists$pathways_with_pvalue =  paste(df_pr
                                                                            '#p.adj_',
                                                                            format.pval(df_precomputed_enrichedPathways_in_geneLists$p.adj,digits=2),
                                                                            sep='')
-
 #creating a list of list 
 precomputed_enrichedPathways_in_geneLists = split(df_precomputed_enrichedPathways_in_geneLists$pathways_with_pvalue,
                                                   df_precomputed_enrichedPathways_in_geneLists$significant_gene_list_name)

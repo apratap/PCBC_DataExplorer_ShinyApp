@@ -1,19 +1,50 @@
+
 #Define the server the logic
 shinyServer(function(input,output,session){
   #get the list of user submitted genes
   user_submitted_geneList <- reactive({
-    geneList <- unlist(strsplit(input$custom_gene_list,split=c('[\\s+,\\n+\\r+)]'),perl=T))
+    input$custom_search
+    geneList <- isolate(input$custom_gene_list)
+    geneList <- unlist(strsplit(geneList, split=c('[\\s+,\\n+\\r+)]'),perl=T))
     #conevert everything to upper case
     geneList <- toupper(geneList)
     geneList <- geneList[ !geneList == "" ] #remove the blank entries
     geneList
   })
   
+  #get the list of user submitted genes
+  user_submitted_miRNAlist <- reactive({
+    input$custom_search
+    miRNAlist <- isolate(input$custom_miRNA_list)
+    miRNAlist  <- unlist(strsplit(miRNAlist,split=c('[\\s+,\\n+\\r+)]'),perl=T))
+    #conevert everything to upper case
+    miRNAlist  <- tolower(miRNAlist)
+    miRNAlist  <- miRNAlist[ !miRNAlist == "" ] #remove the blank entries
+    miRNAlist
+  })
+  
+  #get list of miRNAs
+  selected_miRNAs <- reactive({
+    #get the list of geneIds that were selected by the user
+    # + ones correlated with other genes (if corr option selected) 
+    #this is the reason why not getting geneIds from selected_genes() as it wont have the correlated genes
+    geneIds <- rownames(get_filtered_mRNA_matrix())
+    #get miRNA targetting the selected genes
+    selected_miRNAs <- filter(miRNA_to_genes, GeneID %in% geneIds)
+    selected_miRNAs <- unique(paste(selected_miRNAs$miRNA1,selected_miRNAs$miRNA2,sep=','))
+    selected_miRNAs
+  })
   
   #get list of genes in current pathway or user entered list
   selected_genes <- reactive({
     if( input$genelist_type == 'custom_gene_list'  ){
       genes <- unique(user_submitted_geneList())
+      miRNAs <- user_submitted_miRNAlist()
+      #get miRNA targetting the selected genes
+      selected_miRNAs_targetGenes <- filter(miRNA_to_genes, miRNAPrecursor %in% miRNAs | miRNA1 %in% miRNAs | 
+                                            miRNA2 %in% miRNAs)
+      selected_miRNAs_targetGenes <- unique(selected_miRNAs_targetGenes$GeneID)
+      genes <- unique(c(genes, selected_miRNAs_targetGenes))
     } else if( input$genelist_type == 'precomputed_significant_geneList'){
       if(input$enrichedPathways == 'ALL'){
         genes_in_selected_GeneList <- sigGenes_lists[[input$selected_Significant_GeneList]]
@@ -54,9 +85,6 @@ shinyServer(function(input,output,session){
   output$mRNA_compute_time <- renderPrint({
     print(mRNA_heatmap_compute_results$results$time)
   })
-  
-  #reactive value to store precomputed shiny results of mRNA data
-  mRNA_heatmap_compute_results <- reactiveValues() 
   
   get_filtered_mRNA_matrix <- reactive({
     #a.) subset on sample names based on user selected filters
@@ -111,18 +139,6 @@ shinyServer(function(input,output,session){
      }) #END withProgress
    })
   
-  #get list of miRNAs
-  selected_miRNAs <- reactive({
-    #get the list of geneIds that were selected by the user
-    # + ones correlated with other genes (if corr option selected) 
-    #this is the reason why not getting geneIds from selected_genes() as it wont have the correlated genes
-    geneIds <- rownames(get_filtered_mRNA_matrix())
-    #get miRNA targetting the selected genes
-    selected_miRNAs <- filter(miRNA_to_genes, GeneID %in% geneIds)
-    selected_miRNAs <- unique(paste(selected_miRNAs$miRNA1,selected_miRNAs$miRNA2,sep=','))
-    selected_miRNAs
-  })
-  
   output$microRNA_heatMap <- renderPlot({
     #get the microRNA expression matrix
     filtered_microRNA_NormCounts <- miRNA_normCounts[row.names(miRNA_normCounts) %in% selected_miRNAs(),]
@@ -143,8 +159,6 @@ shinyServer(function(input,output,session){
     fontsize_col=8
     if(nrow(m) > 200){ fontsize_row = 0 }
     if(ncol(m) > 50){ fontsize_col=0 }
-    #annotation
-    filtered_metadata <- get_filtered_metadata(input, combined_metadata)
     annotation <- get_filteredAnnotation(input, filtered_metadata)
     
     withProgress(session, {
@@ -161,7 +175,59 @@ shinyServer(function(input,output,session){
     }) #END withProgress
   
   })
+
+  #get list of miRNAs
+  selected_methProbes <- reactive({
+    #get the list of geneIds that were selected by the user
+    # + ones correlated with other genes (if corr option selected) 
+    #this is the reason why not getting geneIds from selected_genes() as it wont have the correlated genes
+     geneIds <- rownames(get_filtered_mRNA_matrix())
+     #convert to entrezID
+     entrez_geneIds <- convert_to_EntrezIds(geneIds)
+     
+     flt_res <- filter(meth_to_gene, entrezID %in% entrez_geneIds)
+     selected_methProbes <- unique(flt_res$methProbe)
+     selected_methProbes
+  })
   
+  
+  output$methylation_heatMap <- renderPlot({
+    #get the filtered methylation data
+    flt_meth_data <- meth_data[row.names(meth_data) %in% selected_methProbes(),]
+   
+    #subset on sample names based on user selected filters 
+    filtered_metadata <- get_filtered_metadata(input,combined_metadata)
+    flt_meth_data <- flt_meth_data[ ,colnames(flt_meth_data) %in% filtered_metadata$Sample]
+    
+    m <- flt_meth_data
+    validate( need( nrow(m) != 0, "Filtered methylation data matrix contains 0 genes") )
+    
+    # zero variance filter
+    var_methProbe <- apply(m,1,var)
+    rows_to_keep <- var_methProbe > .01
+    m <- m[rows_to_keep, ]
+    m <- data.matrix(m)
+    
+    annotation <- get_filteredAnnotation(input,filtered_metadata)
+    validate( need( nrow(m) != 0, "Filtered methylation data matrix contains 0 genes") )
+    validate( need(nrow(m) < 5000, "Filtered methylation data matrix > 5000 genes. MAX LIMIT 5,000 ") )
+    fontsize_row=8
+    fontsize_col=8
+    if(nrow(m) > 100){ fontsize_row = 0 }
+    if(ncol(m) > 50){ fontsize_col=0 }
+    
+    withProgress(session, {
+      setProgress(message = "clustering & rendering heatmap, please wait", 
+                  detail = "This may take a few moments...")
+      expHeatMap(m,annotation,
+                 clustering_distance_rows = input$clustering_distance,
+                 clustering_distance_cols = input$clustering_distance,
+                 fontsize_col=fontsize_col, 
+                 fontsize_row=fontsize_row,
+                 clustering_method = input$clustering_method)
+    }) #END withProgress
+  })
+
   #create a table with selected gene list and merge with some annotation
   output$geneExpTable <- renderDataTable({
     filtered_mRNA_NormCounts <- subset(mRNA_NormCounts, symbol %in% selected_genes())
@@ -179,20 +245,44 @@ shinyServer(function(input,output,session){
   })
 
   #prepare data for download
-  output$downloadData <- downloadHandler(
+  output$download_mRNAData <- downloadHandler(
     filename = function() { paste('PCBC_geneExpr_data.csv')},
     content  = function(file){
       #ordering the rows based on the clustering order as determined by heatmap clustering
-      row_order =  mRNA_heatmap_compute_results$results[[1]]$order
-      col_order =  mRNA_heatmap_compute_results$results[[2]]$order
-      df = subset(mRNA_NormCounts, symbol %in% selected_genes())
+#       row_order =  mRNA_heatmap_compute_results$results[[1]]$order
+#       col_order =  mRNA_heatmap_compute_results$results[[2]]$order
+#       df = subset(mRNA_NormCounts, symbol %in% selected_genes())
       #reorder rows based on clustering
-      df = df[row_order,]
+#       df = df[row_order,]
       #reorder columns based on clustering
       #just reodering the cols after first three cols of annotation
-      ordered_cols_df <- df[,c(4:ncol(df))][,col_order]
-      df <- cbind(df[,c(1:3)], ordered_cols_df)
-      write.csv(df,file,row.names=FALSE)
+#       ordered_cols_df <- df[,c(4:ncol(df))][,col_order]
+#       df <- cbind(df[,c(1:3)], ordered_cols_df)
+      write.csv(get_filtered_mRNA_matrix(),file,row.names=T, col.names=T)
+    })
+
+  #prepare data for download
+  output$download_miRNAData <- downloadHandler(
+    filename = function() { paste('PCBC_microRNAExpr_data.csv')},
+    content  = function(file){
+      #get the microRNA expression matrix
+      filtered_microRNA_NormCounts <- miRNA_normCounts[row.names(miRNA_normCounts) %in% selected_miRNAs(),]
+      #subset on sample names based on user selected filters 
+      filtered_metadata <- get_filtered_metadata(input,combined_metadata)
+      filtered_microRNA_NormCounts <- filtered_microRNA_NormCounts[ ,colnames(filtered_microRNA_NormCounts) %in% filtered_metadata$Sample]
+      write.csv(filtered_microRNA_NormCounts,file,row.names=T, col.names=T)
+    })
+
+  #prepare data for download
+  output$download_methylationData <- downloadHandler(
+    filename = function() { paste('PCBC_methylation_data.csv')},
+    content  = function(file){
+      #get the methylation  matrix
+      filtered_meth_data <- meth_data[row.names(meth_data) %in% selected_methProbes(),]
+      #subset on sample names based on user selected filters 
+      filtered_metadata <- get_filtered_metadata(input,combined_metadata)
+      filtered_meth_data <- filtered_meth_data[ ,colnames(filtered_meth_data) %in% filtered_metadata$Sample]
+      write.csv(filtered_meth_data,file,row.names=T, col.names=T)
     })
 
 
@@ -210,6 +300,10 @@ shinyServer(function(input,output,session){
     )
   })
   
+  output$meth_data_notes <- reactive({global_meth_data_notes})
+  output$mRNA_data_notes <- reactive({global_mRNA_data_notes})
+  output$miRNA_data_notes <- reactive({global_miRNA_data_notes})
+
   output$topgene_linkOut <- reactive({
     prefix =  '<form action="https://toppgene.cchmc.org/CheckInput.action" method="post" target="_blank" display="inline">
     <input type="hidden" name="query" value="TOPPFUN">
@@ -218,10 +312,16 @@ shinyServer(function(input,output,session){
     suffix = '">
     <input type="Submit" class="btn shiny-download-link shiny-bound-output", value="Enrichment Analysis in ToppGene">
     </form>'
-    genes <- paste(selected_genes(),collapse=" ")
+    geneIds = rownames(get_filtered_mRNA_matrix())
+    geneIds = convert_to_HUGOIds(geneIds)
+    geneIds <- paste(geneIds,collapse=" ")
     #generate the HTML content
-    htmlContent <- paste(c(prefix,genes,suffix), collapse="")
+    htmlContent <- paste(c(prefix,geneIds,suffix), collapse="")
   })
+  
+  #reactive value to store precomputed shiny results of mRNA data
+  mRNA_heatmap_compute_results <- reactiveValues() 
+  
 
   mRNA_cache_time <- reactiveValues()
   output$mRNA_cache_time = renderPrint({

@@ -20,6 +20,8 @@ miRNA_to_genes$Pathway <- NULL
 miRNA_to_genes$mirName <- tolower(gsub('\\*', '', miRNA_to_genes$mirName))
 miRNA_to_genes$mirName <- gsub('-.p', '', miRNA_to_genes$mirName)
 
+
+
 ####
 #match the miRNA exp matrix row names to target genes
 #####
@@ -33,6 +35,12 @@ miRNA_to_genes <- merge(temp_miRNAs_names, miRNA_to_genes, by.x='miRNAPrecursor'
 miRNA_to_genes <- miRNA_to_genes[!duplicated(miRNA_to_genes),]
 cat('..Done\n\n')
 
+# 
+# x <- convert_to_ensemblIds(sample_gene_list)
+# head(miRNA_to_genes)
+# y <- filter(miRNA_to_genes, GeneID %in% x)
+# y <- unique(y$miRNAPrecursor)
+# y[sample(1:322,5)]
 
 ##########
 #the following were tried 
