@@ -4,7 +4,7 @@ PCBC_DataExplorer_ShinyApp
 Interactive DataVis for PCBC expression data
 
 
-Following is an example of to search mRNA, miRNA and methylation signal given a genelist of interest
+Following is an example to search across mRNA, miRNA and methylation signal given a genelist of interest
 
 
 ##### 1. mRNA expression
