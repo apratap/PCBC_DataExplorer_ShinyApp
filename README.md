@@ -1,11 +1,11 @@
-PCBC_DataExplorer_ShinyApp
+Interactive DataVis for PCBC Datasets hosted on [Synapse](https://www.synapse.org/#!Synapse:syn1773109)
 ==========================
 
-Interactive DataVis for PCBC expression data
 
+Following is an example to search across mRNA, miRNA and methylation datasets given a feature list (mRNA/miRNA)
 
-Following is an example to search across mRNA, miRNA and methylation signal given a genelist of interest
-
+* Possible to color the samples different available metadata categories 
+* Can filter/select samples 
 
 ##### 1. mRNA expression
 ![Screen Shot 1](./images/mRNA.png)
